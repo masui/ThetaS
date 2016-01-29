@@ -21,6 +21,7 @@ Usage:
   % theta delete uri    # THETAファイルを削除する
   % theta volume        # シャッター音量を知る
   % theta volume val    # シャッター音量を設定する
+  % theta xxxx.JPG      # THETAビュワーでファイルを開く
 EOF
     close if @sessionId
     exit
@@ -28,7 +29,10 @@ EOF
   
   def exec(name, param)
     res = @http.post '/osc/commands/execute', {name:name, parameters:param}.to_json
-    JSON.parse res.body
+  end
+  
+  def exec_json(name, param)
+    JSON.parse exec(name,param).body
   end
   
   def initialize(args)
@@ -36,20 +40,24 @@ EOF
     usage if args.length == 0
     @http = Net::HTTP.new('192.168.1.1', 80)
     begin
-      res = exec "camera.startSession", nil
+      res = exec_json "camera.startSession", nil
       @sessionId = res["results"]["sessionId"]
     rescue
       puts "THETAが見つかりません。THETAのWiFiをONにしてパソコンからWiFi接続して下さい。"
       exit
     end
 
-    cmd = args[0]
-    if Theta.method_defined?(cmd.to_sym) then
-      method(cmd.to_sym).call
-      close
+    if args[0] =~ /\.(JPG|MP4)$/ then
+      system "open #{args[0]} -a '/Applications/RICOH THETA.app'"
     else
-      puts "コマンド '#{cmd}' は存在しません。"
-      usage
+      cmd = args[0]
+      if Theta.method_defined?(cmd.to_sym) then
+        method(cmd.to_sym).call
+        close
+      else
+        puts "コマンド '#{cmd}' は存在しません。"
+        usage
+      end
     end
   end
 
@@ -57,23 +65,29 @@ EOF
     params = {sessionId: @sessionId}
     exec 'camera.closeSession', params
   end
-  
-  def ls
+
+  def list
+    entries = []
     token = nil
     while true do
       # res = exec "camera.listImages", { entryCount:10, includeThumb: false, continuationToken:token}
-      res = exec "camera._listAll", { entryCount:10, includeThumb: false, continuationToken:token}
+      res = exec_json "camera._listAll", { entryCount:10, includeThumb: false, continuationToken:token}
       token = res['results']['continuationToken']
       res['results']['entries'].each { |result|
-        puts result
+        entries << result
       }
       break unless token
     end
+    entries
+  end
+  
+  def ls
+    list.each { |entry|
+      puts entry
+    }
   end
 
-  def get
-    uri = @args[1]
-    usage unless uri
+  def get_file(uri)
     uri =~ /^(.*)\/(.*)$/
     name = $2
     if name =~ /JPG$/ then
@@ -84,23 +98,47 @@ EOF
     open(name, "wb") {|f| f.write(res.body)}
   end
 
+  def get
+    uri = @args[1]
+    usage unless uri
+    get_file uri
+  end
+
+  def get_all
+    list.each { |entry|
+      STDERR.puts "getting #{entry['name']}..."
+      get_file entry['uri']
+    }
+  end
+
+  def delete_file(uri)
+    res = exec_json "camera.delete", {fileUri: uri}
+  end
+
   def delete
     uri = @args[1]
     usage unless uri
-    res = exec "camera.delete", {fileUri: uri}
+    res = delete_file(uri)
+  end
+
+  def delete_all
+    list.each { |entry|
+      STDERR.puts "deleting #{entry['name']}..."
+      delete_file entry['uri']
+    }
   end
 
   def volume
     val = @args[1]
     if val then
-      res = exec 'camera.setOptions', {sessionId: @sessionId, options:{_shutterVolume:val.to_i}}
+      res = exec_json 'camera.setOptions', {sessionId: @sessionId, options:{_shutterVolume:val.to_i}}
       if res['state'] == "done"
         STDERR.puts "Thetaのシャッター音を #{val} に設定しました"
       else
         STDERR.puts "Thetaのシャッター音設定に失敗しました"
       end
     else
-      res = exec 'camera.getOptions', {sessionId: @sessionId, optionNames:["_shutterVolume"]}
+      res = exec_json 'camera.getOptions', {sessionId: @sessionId, optionNames:["_shutterVolume"]}
       STDERR.puts "Thetaのシャッター音量は #{res['results']['options']['_shutterVolume']} です"
     end
   end
