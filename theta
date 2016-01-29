@@ -10,11 +10,11 @@ class Theta
 theta: RICHO ThetaSのファイル操作など
 
 Usage:
-  % theta ls
-  % theta get uri
-  % theta delete uri
-  % theta volume
-  % theta volume val
+  % theta ls            # THETAの画像/動画ファイルをリストする
+  % theta get uri       # THETAファイルをパソコンにコピーする
+  % theta delete uri    # THETAファイルを削除する
+  % theta volume        # シャッター音量を知る
+  % theta volume val    # シャッター音量を設定する
 EOF
     close if @sessionId
     exit
@@ -33,7 +33,7 @@ EOF
       res = exec "camera.startSession", nil
       @sessionId = res["results"]["sessionId"]
     rescue
-      puts "THETAが見つかりません。THETAのWiFiをONにしてWiFi接続して下さい。"
+      puts "THETAが見つかりません。THETAのWiFiをONにしてパソコンからWiFi接続して下さい。"
       exit
     end
 
@@ -43,6 +43,7 @@ EOF
       close
     else
       puts "コマンド '#{cmd}' は存在しません。"
+      usage
     end
   end
 
