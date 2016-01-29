@@ -22,6 +22,7 @@ Usage:
   % theta volume        # シャッター音量を知る
   % theta volume val    # シャッター音量を設定する
   % theta xxxx.JPG      # THETAビュワーでファイルを開く
+
 EOF
     close if @sessionId
     exit
@@ -38,6 +39,12 @@ EOF
   def initialize(args)
     @args = args
     usage if args.length == 0
+    
+    if @args[0] =~ /\.(JPG|MP4)$/ then
+      system "open #{args[0]} -a '/Applications/RICOH THETA.app'"
+      exit
+    end
+      
     @http = Net::HTTP.new('192.168.1.1', 80)
     begin
       res = exec_json "camera.startSession", nil
@@ -47,17 +54,13 @@ EOF
       exit
     end
 
-    if args[0] =~ /\.(JPG|MP4)$/ then
-      system "open #{args[0]} -a '/Applications/RICOH THETA.app'"
+    cmd = args[0]
+    if Theta.method_defined?(cmd.to_sym) then
+      method(cmd.to_sym).call
+      close
     else
-      cmd = args[0]
-      if Theta.method_defined?(cmd.to_sym) then
-        method(cmd.to_sym).call
-        close
-      else
-        puts "コマンド '#{cmd}' は存在しません。"
-        usage
-      end
+      puts "コマンド '#{cmd}' は存在しません。"
+      usage
     end
   end
 
@@ -70,7 +73,6 @@ EOF
     entries = []
     token = nil
     while true do
-      # res = exec "camera.listImages", { entryCount:10, includeThumb: false, continuationToken:token}
       res = exec_json "camera._listAll", { entryCount:10, includeThumb: false, continuationToken:token}
       token = res['results']['continuationToken']
       res['results']['entries'].each { |result|
