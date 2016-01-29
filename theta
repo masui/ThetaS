@@ -1,5 +1,11 @@
 #!/usr/bin/ruby
 # coding: utf-8
+#
+# RICHO THETA S を操作する
+#
+# APIリファレンス:
+#   https://developers.theta360.com/ja/docs/v2/api_reference/
+#
 
 require 'net/http'
 require 'json'
