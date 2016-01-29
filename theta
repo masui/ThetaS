@@ -28,12 +28,12 @@ EOF
     exit
   end
   
-  def exec(name, param)
+  def exec_command(name, param)
     res = @http.post '/osc/commands/execute', {name:name, parameters:param}.to_json
   end
   
   def exec_json(name, param)
-    JSON.parse exec(name,param).body
+    JSON.parse exec_command(name,param).body
   end
   
   def initialize(args)
@@ -41,6 +41,7 @@ EOF
     usage if args.length == 0
     
     if @args[0] =~ /\.(JPG|MP4)$/ then
+      puts "open #{args[0]} -a '/Applications/RICOH THETA.app'"
       system "open #{args[0]} -a '/Applications/RICOH THETA.app'"
       exit
     end
@@ -66,7 +67,7 @@ EOF
 
   def close
     params = {sessionId: @sessionId}
-    exec 'camera.closeSession', params
+    exec_command 'camera.closeSession', params
   end
 
   def list
@@ -93,9 +94,9 @@ EOF
     uri =~ /^(.*)\/(.*)$/
     name = $2
     if name =~ /JPG$/ then
-      res = exec "camera.getImage", {fileUri: uri}
+      res = exec_command "camera.getImage", {fileUri: uri}
     elsif name =~ /MP4$/ then
-      res = exec "camera._getVideo", {fileUri: uri}
+      res = exec_command "camera._getVideo", {fileUri: uri}
     end
     open(name, "wb") {|f| f.write(res.body)}
   end
