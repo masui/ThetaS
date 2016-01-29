@@ -1,4 +1,5 @@
 #!/usr/bin/ruby
+# coding: utf-8
 
 require 'net/http'
 require 'json'
@@ -6,13 +7,14 @@ require 'json'
 class Theta
   def usage
     STDERR.puts <<EOF
-theta: manage THETA files
+theta: RICHO ThetaSのファイル操作など
 
 Usage:
   % theta ls
   % theta get uri
   % theta delete uri
-  % theta volume [val]
+  % theta volume
+  % theta volume val
 EOF
     close if @sessionId
     exit
@@ -31,7 +33,7 @@ EOF
       res = exec "camera.startSession", nil
       @sessionId = res["results"]["sessionId"]
     rescue
-      puts "Can't find THETA at 192.168.1.1"
+      puts "THETAが見つかりません。THETAのWiFiをONにしてWiFi接続して下さい。"
       exit
     end
 
@@ -40,13 +42,13 @@ EOF
       method(cmd.to_sym).call
       close
     else
-      puts "Command '#{cmd}' not defined"
+      puts "コマンド '#{cmd}' は存在しません。"
     end
   end
 
   def close
-    params = {name: "camera.closeSession", parameters: {sessionId: @sessionId}}.to_json
-    exec '/osc/commands/execute', params
+    params = {sessionId: @sessionId}
+    exec 'camera.closeSession', params
   end
   
   def ls
@@ -86,13 +88,13 @@ EOF
     if val then
       res = exec 'camera.setOptions', {sessionId: @sessionId, options:{_shutterVolume:val.to_i}}
       if res['state'] == "done"
-        STDERR.puts "Shutter volume set to #{val}"
+        STDERR.puts "Thetaのシャッター音を #{val} に設定しました"
       else
-        STDERR.puts "Volume setting failed"
+        STDERR.puts "Thetaのシャッター音設定に失敗しました"
       end
     else
       res = exec 'camera.getOptions', {sessionId: @sessionId, optionNames:["_shutterVolume"]}
-      STDERR.puts "Shutter volume is #{res['results']['options']['_shutterVolume']}"
+      STDERR.puts "Thetaのシャッター音量は #{res['results']['options']['_shutterVolume']} です"
     end
   end
 end
