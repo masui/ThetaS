@@ -18,7 +18,9 @@ theta: RICHO ThetaSのファイル操作など
 Usage:
   % theta ls            # THETAの画像/動画ファイルをリストする
   % theta get uri       # THETAファイルをパソコンにコピーする
+  % theta get_all       # THETAファイルをすべてパソコンにコピーする
   % theta delete uri    # THETAファイルを削除する
+  % theta delete_all    # THETAファイルをすべて削除する
   % theta volume        # シャッター音量を知る
   % theta volume val    # シャッター音量を設定する
   % theta xxxx.JPG      # THETAビュワーでファイルを開く
