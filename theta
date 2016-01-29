@@ -1,0 +1,100 @@
+#!/usr/bin/ruby
+
+require 'net/http'
+require 'json'
+
+class Theta
+  def usage
+    STDERR.puts <<EOF
+theta: manage THETA files
+
+Usage:
+  % theta ls
+  % theta get uri
+  % theta delete uri
+  % theta volume [val]
+EOF
+    close if @sessionId
+    exit
+  end
+  
+  def exec(name, param)
+    res = @http.post '/osc/commands/execute', {name:name, parameters:param}.to_json
+    JSON.parse res.body
+  end
+  
+  def initialize(args)
+    @args = args
+    usage if args.length == 0
+    @http = Net::HTTP.new('192.168.1.1', 80)
+    begin
+      res = exec "camera.startSession", nil
+      @sessionId = res["results"]["sessionId"]
+    rescue
+      puts "Can't find THETA at 192.168.1.1"
+      exit
+    end
+
+    cmd = args[0]
+    if Theta.method_defined?(cmd.to_sym) then
+      method(cmd.to_sym).call
+      close
+    else
+      puts "Command '#{cmd}' not defined"
+    end
+  end
+
+  def close
+    params = {name: "camera.closeSession", parameters: {sessionId: @sessionId}}.to_json
+    exec '/osc/commands/execute', params
+  end
+  
+  def ls
+    token = nil
+    while true do
+      # res = exec "camera.listImages", { entryCount:10, includeThumb: false, continuationToken:token}
+      res = exec "camera._listAll", { entryCount:10, includeThumb: false, continuationToken:token}
+      token = res['results']['continuationToken']
+      res['results']['entries'].each { |result|
+        puts result
+      }
+      break unless token
+    end
+  end
+
+  def get
+    uri = @args[1]
+    usage unless uri
+    uri =~ /^(.*)\/(.*)$/
+    name = $2
+    if name =~ /JPG$/ then
+      res = exec "camera.getImage", {fileUri: uri}
+    elsif name =~ /MP4$/ then
+      res = exec "camera._getVideo", {fileUri: uri}
+    end
+    open(name, "wb") {|f| f.write(res.body)}
+  end
+
+  def delete
+    uri = @args[1]
+    usage unless uri
+    res = exec "camera.delete", {fileUri: uri}
+  end
+
+  def volume
+    val = @args[1]
+    if val then
+      res = exec 'camera.setOptions', {sessionId: @sessionId, options:{_shutterVolume:val.to_i}}
+      if res['state'] == "done"
+        STDERR.puts "Shutter volume set to #{val}"
+      else
+        STDERR.puts "Volume setting failed"
+      end
+    else
+      res = exec 'camera.getOptions', {sessionId: @sessionId, optionNames:["_shutterVolume"]}
+      STDERR.puts "Shutter volume is #{res['results']['options']['_shutterVolume']}"
+    end
+  end
+end
+
+theta = Theta.new ARGV
