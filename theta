@@ -91,8 +91,13 @@ EOF
   end
 
   def get_file(uri)
+    STDERR.puts "getting #{uri}..."
     uri =~ /^(.*)\/(.*)$/
     name = $2
+    unless name
+      STDERR.puts "Can't get #{uri}"
+      return
+    end
     if name =~ /JPG$/ then
       res = exec_command "camera.getImage", {fileUri: uri}
     elsif name =~ /MP4$/ then
@@ -109,12 +114,12 @@ EOF
 
   def get_all
     list.each { |entry|
-      STDERR.puts "getting #{entry['name']}..."
       get_file entry['uri']
     }
   end
 
   def delete_file(uri)
+    STDERR.puts "deleting #{uri}..."
     res = exec_json "camera.delete", {fileUri: uri}
   end
 
@@ -126,7 +131,6 @@ EOF
 
   def delete_all
     list.each { |entry|
-      STDERR.puts "deleting #{entry['name']}..."
       delete_file entry['uri']
     }
   end
